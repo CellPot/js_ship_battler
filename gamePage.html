@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="./scripts/logger.js"></script>
+    <script src="./scripts/observer.js"></script>
+    <script src="scripts/ship.js"></script>
+    <script src="./scripts/shipBuilder.js"></script>
+    <script src="./scripts/shipGameHandler.js"></script>
+</head>
+<body>
+<p><span id="ship1Name">Ship A</span> <span id="ship2Name" style="margin-left: 70px;">Ship B</span></p>
+<p><span>Weapon 1</span> <span style="margin-left: 40px;">Weapon 1</span></p>
+<p><select id="ship1Weapon1"></select><select id="ship2Weapon1" style="margin-left: 20px;"></select></p>
+<p><span>Weapon 2</span> <span style="margin-left: 40px;">Weapon 2</span></p>
+<p><select id="ship1Weapon2"></select><select id="ship2Weapon2" style="margin-left: 20px;"></select></p>
+
+<p><span>Module 1</span> <span style="margin-left: 40px;">Module 1</span></p>
+<p><select id="ship1Module1"></select><select id="ship2Module1" style="margin-left: 20px;"></select></p>
+
+<p><span>Module 2</span> <span style="margin-left: 40px;">Module 2</span></p>
+<p><select id="ship1Module2"></select><select id="ship2Module2" style="margin-left: 20px;"></select></p>
+
+<p><span>Module 3</span></p>
+<p><select id="ship1Module3"></select></p>
+<p><span id="ship1Shield" style="color: blue; margin-left: 70px;">100.00/100.00</span> <span id="ship2Shield"
+                                                                                             style="color: blue; margin-left: 85px;">&nbsp;100.00/100.00</span>
+</p>
+<p><span id="ship1Health" style="color: red; margin-left: 70px;">100.00/100.00</span> <span id="ship2Health"
+                                                                                            style="color: red; margin-left: 85px;">&nbsp;100.00/100.00</span>
+</p>
+<img src="images/shipA.png" alt="Ship A" width="200" height="150">
+<img src="images/shipB.png" alt="Ship B" width="200" height="150">
+<button id="startButton" style="margin-left: -250px;">Start the game!</button>
+<p></p>
+<label for="logArea"></label><textarea id="logArea" rows="10" cols="80" readonly></textarea>
+
+<script>
+    const ship1Weapon1 = document.getElementById('ship1Weapon1');
+    const ship1Weapon2 = document.getElementById('ship1Weapon2');
+    const ship2Weapon1 = document.getElementById('ship2Weapon1');
+    const ship2Weapon2 = document.getElementById('ship2Weapon2');
+    const ship1Module1 = document.getElementById('ship1Module1');
+    const ship1Module2 = document.getElementById('ship1Module2');
+    const ship1Module3 = document.getElementById('ship1Module3');
+    const ship2Module1 = document.getElementById('ship2Module1');
+    const ship2Module2 = document.getElementById('ship2Module2');
+    const selectElements = document.getElementsByTagName('select');
+    const startButton = document.getElementById("startButton");
+    const logArea = document.getElementById("logArea");
+
+    const weaponOptions = ['Weapon A', 'Weapon B', 'Weapon C'];
+    const moduleOptions = ['Empty', 'Module A', 'Module B', 'Module C', 'Module D'];
+
+    const logger = new TextFieldConsoleLogger(logArea);
+    const shipGameHandler = new ShipGameHandler(logger);
+
+    function subscribeToEvents() {
+        startButton.addEventListener("click", () => this.onStartClicked());
+        for (let i = 0; i < selectElements.length; i++) {
+            selectElements[i].addEventListener('change', function () {
+                onSelectChanged(this);
+            });
+        }
+    }
+
+    function onStartClicked() {
+        logger.clearLog();
+        shipGameHandler.updatedEvent.unsubscribe(onGameCycleUpdated);
+        shipGameHandler.gameStateChangedEvent.unsubscribe(onGameStateChanged);
+        this.initializeShips();
+        shipGameHandler.updatedEvent.subscribe(onGameCycleUpdated);
+        shipGameHandler.gameStateChangedEvent.subscribe(onGameStateChanged);
+        shipGameHandler.startGame();
+    }
+
+    function onSelectChanged(params) {
+        if (shipGameHandler.gameState !== gameStates.Started) {
+            let selectedOption = params.value;
+            this.initializeShips();
+            logger.log('Changed selection ' + params.id + ': ' + selectedOption);
+        }
+    }
+
+    function initializeShips() {
+        let selectedWeapons1 = [ship1Weapon1.selectedIndex, ship1Weapon2.selectedIndex];
+        let selectedWeapons2 = [ship2Weapon1.selectedIndex, ship2Weapon2.selectedIndex];
+        let selectedModules1 = [ship1Module1.selectedIndex, ship1Module2.selectedIndex, ship1Module3.selectedIndex];
+        let selectedModules2 = [ship2Module1.selectedIndex, ship2Module2.selectedIndex];
+        shipGameHandler.initializeShip1(selectedWeapons1, selectedModules1);
+        shipGameHandler.initializeShip2(selectedWeapons2, selectedModules2);
+        this.updateOutputFields();
+    }
+
+    function onGameCycleUpdated() {
+        if (shipGameHandler.gameState === gameStates.Started) {
+            this.updateOutputFields();
+        }
+    }
+
+    function updateInputFields() {
+        weaponOptions.forEach(option => {
+            let optionElement = document.createElement('option');
+            optionElement.text = option;
+            ship1Weapon1.add(optionElement.cloneNode(true));
+            ship1Weapon2.add(optionElement.cloneNode(true));
+            ship2Weapon1.add(optionElement.cloneNode(true));
+            ship2Weapon2.add(optionElement.cloneNode(true));
+        });
+        moduleOptions.forEach(option => {
+            let optionElement = document.createElement('option');
+            optionElement.text = option;
+            ship1Module1.add(optionElement.cloneNode(true));
+            ship1Module2.add(optionElement.cloneNode(true));
+            ship1Module3.add(optionElement.cloneNode(true));
+            ship2Module1.add(optionElement.cloneNode(true));
+            ship2Module2.add(optionElement.cloneNode(true));
+        });
+    }
+
+    function updateOutputFields() {
+        document.getElementById("ship1Name").innerHTML = shipGameHandler.ship1.nameProperty;
+        document.getElementById("ship2Name").innerHTML = shipGameHandler.ship2.nameProperty;
+        document.getElementById("ship1Shield").innerHTML = shipGameHandler.ship1.shieldProperty.value.toFixed(2) + "/" + shipGameHandler.ship1.shieldProperty.maxValue.toFixed(2);
+        document.getElementById("ship2Shield").innerHTML = shipGameHandler.ship2.shieldProperty.value.toFixed(2) + "/" + shipGameHandler.ship2.shieldProperty.maxValue.toFixed(2);
+        document.getElementById("ship1Health").innerHTML = shipGameHandler.ship1.healthProperty.value.toFixed(2) + "/" + shipGameHandler.ship1.healthProperty.maxValue.toFixed(2);
+        document.getElementById("ship2Health").innerHTML = shipGameHandler.ship2.healthProperty.value.toFixed(2) + "/" + shipGameHandler.ship2.healthProperty.maxValue.toFixed(2);
+    }
+
+    function onGameStateChanged(newState) {
+        this.updateOutputFields();
+        if (newState === gameStates.Started) {
+            logger.log("The game has been started!");
+        } else if (newState === gameStates.Finished) {
+            logger.log("The game has finished!");
+            let destroyedShip = shipGameHandler.ship1.isDestroyed ? shipGameHandler.ship1 : shipGameHandler.ship2;
+            setTimeout(() => alert("Game over! " + destroyedShip.nameProperty + " was destroyed!"), 0);
+        }
+    }
+
+    updateInputFields();
+    initializeShips();
+    subscribeToEvents();
+</script>
+</body>
+</html>
